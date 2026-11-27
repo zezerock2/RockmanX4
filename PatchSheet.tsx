@@ -191,7 +191,7 @@ function OutfitPicker({
     <fieldset className="shot-picker">
       <legend className="shot-legend">外型</legend>
       <div className="shot-options">
-        {X4_OUTFITS.map((option) => (
+        {X4_OUTFITS.filter((option) => !option.hidden).map((option) => (
           <label key={option.id} className={`shot-option ${value === option.id ? "is-selected" : ""}`}>
             <input
               type="radio"
@@ -249,14 +249,16 @@ function ExtraWritesPicker({
               <span className="extra-group-count" aria-label={`已選 ${count} 項，共 ${items.length} 項`}>
                 {count}/{items.length}
               </span>
-              <button
-                type="button"
-                className="extra-group-toggle"
-                onClick={() => onSetAll(allOn ? [] : items.map((extra) => extra.id))}
-                aria-label={allOn ? `${group.label}全不選` : `${group.label}全選`}
-              >
-                {allOn ? "全不選" : "全選"}
-              </button>
+              {group.id !== "experiment" && (
+                <button
+                  type="button"
+                  className="extra-group-toggle"
+                  onClick={() => onSetAll(allOn ? [] : items.map((extra) => extra.id))}
+                  aria-label={allOn ? `${group.label}全不選` : `${group.label}全選`}
+                >
+                  {allOn ? "全不選" : "全選"}
+                </button>
+              )}
             </p>
             <div className="shot-options extra-options">
               {items.map((extra) => {

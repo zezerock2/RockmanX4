@@ -98,15 +98,17 @@ function x4LookCode(lba: number, size: number): string {
 export const X4_FALCON_LOOK_CODE = x4LookCode(234195, 808960);
 export const X4_ORIGINAL_LOOK_CODE = x4LookCode(1149, 780288);
 
-export const X4_OUTFITS: { id: X4Outfit; label: string; description: string; extra: string | null }[] = [
+export const X4_OUTFITS: { id: X4Outfit; label: string; description: string; extra: string | null; hidden?: boolean }[] = [
   {
     id: "fourth",
+    hidden: true,
     label: "第四裝甲",
     description: "白藍配色，X4 裡最接近獵鷹裝甲的外型；彈種跟著「集氣彈種類」。",
     extra: null,
   },
   {
     id: "ultimate",
+    hidden: true,
     label: "究極裝甲",
     description: "紫黑配色的隱藏裝甲：固定電漿彈、NOVA STRIKE 不限次數。立起隱藏旗標，等同輸入隱藏指令。",
     extra: X4_HIDDEN_FLAG_CODE,
@@ -129,12 +131,13 @@ export const X4_OUTFITS: { id: X4Outfit; label: string; description: string; ext
  * does) and 「外型」 (what it looks like in motion). Array order is the
  * canonical code order and is intentionally untouched by the grouping.
  */
-export type X4ExtraId = "afterimage" | "dash-distance" | "air-speed" | "no-stiffness" | "shot-limit" | "invincible";
-export type X4ExtraGroup = "ability" | "appearance";
+export type X4ExtraId = "afterimage" | "dash-distance" | "air-speed" | "no-stiffness" | "shot-limit" | "hit-skip" | "hp-lock";
+export type X4ExtraGroup = "ability" | "appearance" | "experiment";
 
 export const X4_EXTRA_GROUPS: { id: X4ExtraGroup; label: string; hint: string }[] = [
   { id: "ability", label: "能力", hint: "獵鷹的動作與射擊" },
   { id: "appearance", label: "外型", hint: "獵鷹在移動中的視覺" },
+  { id: "experiment", label: "實驗", hint: "診斷用，請一次只開一項" },
 ];
 
 export const X4_EXTRA_WRITES: {
@@ -187,16 +190,26 @@ export const X4_EXTRA_WRITES: {
     code: "30141A40 0000",
   },
   {
-    // Experimental. X4's hit handler (0x8002DD58) returns early when the target's byte at +0x7A is
-    // non-zero, and the player object sits at 0x80141A00, so this is 0x80141A7A. Derived from the
-    // executable, not yet confirmed in play.
-    id: "invincible",
-    group: "ability",
+    // Experiment. 0x8002DD7C is `bne v0,zero,+0x37` right after the hit handler's immunity check
+    // (`lb v0,0x7a(s1)`); rewriting its upper half (0x1440 -> 0x1000) turns it into an unconditional
+    // branch, so every hit routed through that handler is skipped. Which side it protects (X, enemies,
+    // or both) is what this experiment is meant to tell us.
+    id: "hit-skip",
+    group: "experiment",
     falcon: "飛行無敵",
-    label: "無敵（實驗）",
+    label: "診斷A：受擊處理一律略過（實驗）",
     description:
-      "把受擊判定裡的免疫旗標寫成非零，讓 X 不會被擊中。搭配無限漂浮就是「飛行無敵」，但平時也會無敵。依程式分析推測，尚未實測，也可能沒有效果。",
-    code: "30141A7A 0001",
+      "把受擊處理程式改成直接略過傷害。請回報：X 受傷了嗎？敵人受傷了嗎？依結果才知道這段程式管的是哪一邊。",
+    code: "8002DD7E 1000",
+  },
+  {
+    // Experiment. If the player's HP is the byte at entity +0x5C (0x80141A5C) this keeps it full.
+    id: "hp-lock",
+    group: "experiment",
+    falcon: "飛行無敵",
+    label: "診斷B：鎖定血量（實驗）",
+    description: "每一格都把 0x80141A5C 寫成 0x20。請回報：被打到後血條有沒有減少？血條有沒有出現怪異。",
+    code: "30141A5C 0020",
   },
 ];
 
@@ -515,7 +528,7 @@ function readShot(): ChargeShotType {
 
 function readX4Outfit(): X4Outfit {
   const value = readRaw(X4_OUTFIT_KEY);
-  return isX4Outfit(value) ? value : "fourth";
+  return isX4Outfit(value) ? value : "falcon";
 }
 
 function readX4Extras(): X4ExtraId[] {
